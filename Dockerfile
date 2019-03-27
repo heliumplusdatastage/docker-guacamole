@@ -1,5 +1,6 @@
 FROM library/tomcat:9-jre8
 
+# Env for Guacamole
 ENV ARCH=amd64 \
   GUAC_VER=1.0.0 \
   GUACAMOLE_HOME=/app/guacamole \
@@ -7,6 +8,22 @@ ENV ARCH=amd64 \
   PGDATA=/config/postgres \
   POSTGRES_USER=guacamole \
   POSTGRES_DB=guacamole_db
+
+# Env for VNC
+ENV DISPLAY=:1 \
+    VNC_PORT=5901
+EXPOSE $VNC_PORT
+
+ENV HOME=/headless \
+    TERM=xterm \
+    STARTUPDIR=/dockerstartup \
+    INST_SCRIPTS=/headless/install \
+    NO_VNC_HOME=/headless/noVNC \
+    DEBIAN_FRONTEND=noninteractive \
+    VNC_COL_DEPTH=24 \
+    VNC_RESOLUTION=1280x1024 \
+    VNC_PW=vncpassword \
+    VNC_VIEW_ONLY=false
 
 # Apply the s6-overlay
 
@@ -73,5 +90,31 @@ ENV GUACAMOLE_HOME=/config/guacamole
 WORKDIR /config
 
 COPY root /
+
+# Reset the WORKDIR for the vnc/desktop install
+WORKDIR $HOME
+
+### Add all install scripts for further steps
+ADD ./src/common/install/ $INST_SCRIPTS/
+ADD ./src/debian/install/ $INST_SCRIPTS/
+RUN find $INST_SCRIPTS -name '*.sh' -exec chmod a+x {} +
+
+### Install some common tools
+RUN $INST_SCRIPTS/tools.sh
+ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+
+### Install custom fonts
+RUN $INST_SCRIPTS/install_custom_fonts.sh
+
+### Install xvnc-server & noVNC - HTML5 based VNC viewer
+RUN $INST_SCRIPTS/tigervnc.sh
+
+### Install firefox and chrome browser
+RUN $INST_SCRIPTS/firefox.sh
+RUN $INST_SCRIPTS/chrome.sh
+
+### Install xfce UI
+RUN $INST_SCRIPTS/xfce_ui.sh
+ADD ./src/common/xfce/ $HOME/
 
 ENTRYPOINT [ "/init" ]
