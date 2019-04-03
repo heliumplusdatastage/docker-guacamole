@@ -16,7 +16,7 @@ EXPOSE $VNC_PORT
 
 ENV HOME=/headless \
     TERM=xterm \
-    STARTUPDIR=/dockerstartup \
+    STARTUPDIR=/headless/dockerstartup \
     INST_SCRIPTS=/headless/install \
     NO_VNC_HOME=/headless/noVNC \
     DEBIAN_FRONTEND=noninteractive \
@@ -25,8 +25,13 @@ ENV HOME=/headless \
     VNC_PW=vncpassword \
     VNC_VIEW_ONLY=false
 
-# Apply the s6-overlay
+ENV USER=$USERID
 
+RUN mkdir $HOME
+RUN mkdir $STARTUPDIR
+RUN mkdir $INST_SCRIPTS
+
+# Apply the s6-overlay
 RUN curl -SLO "https://github.com/just-containers/s6-overlay/releases/download/v1.20.0.0/s6-overlay-${ARCH}.tar.gz" \
   && tar -xzf s6-overlay-${ARCH}.tar.gz -C / \
   && tar -xzf s6-overlay-${ARCH}.tar.gz -C /usr ./bin \
@@ -116,5 +121,9 @@ RUN $INST_SCRIPTS/chrome.sh
 ### Install xfce UI
 RUN $INST_SCRIPTS/xfce_ui.sh
 ADD ./src/common/xfce/ $HOME/
+
+RUN $INST_SCRIPTS/libnss_wrapper.sh
+ADD ./src/common/scripts $STARTUPDIR
+RUN $INST_SCRIPTS/set_user_permission.sh $STARTUPDIR $HOME
 
 ENTRYPOINT [ "/init" ]
