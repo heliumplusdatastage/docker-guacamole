@@ -1,4 +1,23 @@
 #!/usr/bin/with-contenv sh
+USER_ID=`echo $USER | cut -d':' -f1`
+GROUP_ID=`echo $USER | cut -d':' -f2`
+echo "Creating user for $USER_NAME with $HOME"
+groupadd -r $USER_NAME --gid=$GROUP_ID
+useradd -rm -d $HOME -s /bin/bash -g $GROUP_ID -u $USER_ID $USER_NAME
+
+if [ ! -f $HOME/wm_startup.sh ] ; then
+   cp /headless/wm_startup.sh $HOME/wm_startup.sh
+fi
+
+if [ ! -f $HOME/.config/CommonsShareBackground3.jpg ] ; then
+   cp /headless/.config/CommonsShareBackground3.jpg $HOME/.config/CommonsShareBackground3.jpg
+fi
+
+if [ ! -d $HOME/.config/xfce4 ] ; then
+   cp -r /headless/.config/xfce4 $HOME/.config/
+fi
+
+chown -R $USER_NAME:$USER_GROUP $HOME/.config
 
 mkdir -p "$HOME/.vnc"
 touch "$HOME/.Xresources"
