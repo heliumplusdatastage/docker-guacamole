@@ -9,12 +9,25 @@ if [ ! -f $HOME/wm_startup.sh ] ; then
    cp /headless/wm_startup.sh $HOME/wm_startup.sh
 fi
 
+
+if [ ! -f $HOME/Desktop/firefox.desktop ] ; then
+   if [ ! -d $HOME/Desktop ] ; then
+      mkdir $HOME/Desktop
+   fi
+   cp /headless/Desktop/firefox.desktop $HOME/Desktop/firefox.desktop
+   chown -R $USER_NAME:$USER_GROUP $HOME/Desktop
+fi
+
+if [ ! -d $HOME/.config ] ; then
+   mkdir $HOME/.config
+fi
+
 if [ ! -f $HOME/.config/CommonsShareBackground3.jpg ] ; then
    cp /headless/.config/CommonsShareBackground3.jpg $HOME/.config/CommonsShareBackground3.jpg
 fi
 
 if [ ! -d $HOME/.config/xfce4 ] ; then
-   cp -r /headless/.config/xfce4 $HOME/.config/
+   cp -r /headless/.config/xfce4 $HOME/.config/xfce4
 fi
 
 chown -R $USER_NAME:$USER_GROUP $HOME/.config
