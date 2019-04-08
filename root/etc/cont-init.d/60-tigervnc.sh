@@ -9,7 +9,6 @@ if [ ! -f $HOME/wm_startup.sh ] ; then
    cp /headless/wm_startup.sh $HOME/wm_startup.sh
 fi
 
-
 if [ ! -f $HOME/Desktop/firefox.desktop ] ; then
    if [ ! -d $HOME/Desktop ] ; then
       mkdir $HOME/Desktop
@@ -30,6 +29,8 @@ if [ ! -d $HOME/.config/xfce4 ] ; then
    cp -r /headless/.config/xfce4 $HOME/.config/xfce4
 fi
 
+echo "cd $HOME" >> $HOME/.bashrc
+
 chown -R $USER_NAME:$USER_GROUP $HOME/.config
 
 mkdir -p "$HOME/.vnc"
@@ -40,13 +41,6 @@ if [ -f $PASSWD_PATH ]; then
     echo -e "\n---------  purging existing VNC password settings  ---------"
     rm -f $PASSWD_PATH
 fi
-
-#cat << EOF > "$HOME/.vnc/xstartup"
-#!/bin/bash
-#xrdb $HOME/.Xresources
-#unset SESSION_MANAGER
-#startxfce4 &
-#EOF
 
 echo "$VNC_PW" | vncpasswd -f >> $PASSWD_PATH
 chmod 600 $PASSWD_PATH

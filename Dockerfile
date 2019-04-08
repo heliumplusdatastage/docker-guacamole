@@ -117,13 +117,11 @@ RUN $INST_SCRIPTS/tigervnc.sh
 
 ### Install firefox and chrome browser
 RUN $INST_SCRIPTS/firefox.sh
-RUN $INST_SCRIPTS/chrome.sh
 
 ### Install xfce UI
 RUN $INST_SCRIPTS/xfce_ui.sh
 ADD ./src/common/xfce/ $HOME/
 
-RUN $INST_SCRIPTS/libnss_wrapper.sh
 ADD ./src/common/scripts $STARTUPDIR
 RUN $INST_SCRIPTS/set_user_permission.sh $STARTUPDIR $HOME
 
