@@ -4,18 +4,25 @@ set -e
 echo "Install Firefox"
 
 function disableUpdate(){
-    ff_def="$1/browser/defaults/profile"
-    mkdir -p $ff_def
-    echo <<EOF_FF
-user_pref("app.update.auto", false);
-user_pref("app.update.enabled", false);
-user_pref("app.update.lastUpdateTime.addon-background-update-timer", 1182011519);
-user_pref("app.update.lastUpdateTime.background-update-timer", 1182011519);
-user_pref("app.update.lastUpdateTime.blocklist-background-update-timer", 1182010203);
-user_pref("app.update.lastUpdateTime.microsummary-generator-update-timer", 1222586145);
-user_pref("app.update.lastUpdateTime.search-engine-update-timer", 1182010203);
+# see https://support.mozilla.org/en-US/kb/customizing-firefox-using-autoconfig
+    ff_def="$1/defaults/pref"
+    cat << EOF_FF > $1/firefox.cfg
+// IMPORTANT: Start your code on the 2nd line
+pref("app.update.auto", false);
+pref("app.update.enabled", false);
+pref("browser.tabs.remote.autostart", false);
+pref("app.update.lastUpdateTime.addon-background-update-timer", 1182011519);
+pref("app.update.lastUpdateTime.background-update-timer", 1182011519);
+pref("app.update.lastUpdateTime.blocklist-background-update-timer", 1182010203);
+pref("app.update.lastUpdateTime.microsummary-generator-update-timer", 1222586145);
+pref("app.update.lastUpdateTime.search-engine-update-timer", 1182010203);
 EOF_FF
-    > $ff_def/user.js
+
+    cat << EOF_CFG > $ff_def/autoconfig.js
+pref("general.config.filename", "firefox.cfg");
+pref("general.config.obscure_value", 0);
+EOF_CFG
+#   > $ff_def/user.js
 }
 
 #copy from org/sakuli/common/bin/installer_scripts/linux/install_firefox_portable.sh
@@ -30,7 +37,7 @@ function instFF() {
             echo "FF_URL: $FF_URL"
             wget -qO- $FF_URL | tar xvj --strip 1 -C $FF_INST/
             ln -s "$FF_INST/firefox" /usr/bin/firefox
-            disableUpdate $FF_INST
+            disableUpdate /usr/lib/firefox
             exit $?
         fi
     fi
@@ -39,7 +46,8 @@ function instFF() {
 }
 
 #instFF '45.9.0esr' '/usr/lib/firefox'
-instFF '66.0.2' '/usr/lib/firefox'
+#instFF '66.0.2' '/usr/lib/firefox'
+instFF '60.6.1esr' '/usr/lib/firefox'
 
 #yum -y install firefox-45.7.0-2.el7.centos
 #yum -y install firefox
