@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: desktop
+  labels:
+    service: desktop
+    app: desktop
+spec:
+  terminationGracePeriodSeconds: 10
+  containers:
+  - name: vnc-desktop
+    image: heliumdatastage/renci-guacamole-vnc:use-all-defaults
+#   args: ["name", "local-guacamole"]
+#   command: [ "--name=local-guacamole", "/init" ]
+    ports:
+      - containerPort: 8080
+        name: http
+    resources:
+      requests:
+        memory: 200Mi
+      limits:
+        memory: 1Gi
+  restartPolicy: OnFailure

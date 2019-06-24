@@ -1,0 +1,24 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: docker-guacamole-deployment
+  labels:
+    app: guacamole-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: guacamole-deployment
+  template:
+    metadata:
+      labels:
+        app: guacamole-deployment
+    spec:
+      containers:
+      - name: guacamole-deployment
+        image: heliumdatastage/renci-guacamole-vnc:use-all-defaults
+#       args: ["name", "local-guacamole"]
+#        command: [ "--name=local-guacamole", "/init" ]
+        ports:
+          - containerPort: 8080
+            name: http
