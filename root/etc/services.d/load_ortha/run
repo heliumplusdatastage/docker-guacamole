@@ -1,0 +1,23 @@
+#!/usr/bin/with-contenv sh
+
+echo "Loading ortha data ..."
+
+SUPERVISED_DIR=/run/s6/services
+
+# Wait until ortha comes up
+s6-svwait -u ${SUPERVISED_DIR}/ortha
+
+# change to the data directory
+cd /usr/local/data
+
+# load up all the single files
+find . -type f -exec python2 /usr/local/sbin/ImportDicomFiles.py 127.0.0.1 8042 {} orthanc orthanc \;
+
+# load all the top level directories
+find . -type d -exec python2 /usr/local/sbin/ImportDicomFiles.py 127.0.0.1 8042 {} orthanc orthanc \;
+
+# make sure this script is only executed once.
+s6-svc -x ${SUPERVISED_DIR}/load_ortha
+rm -rf ${SUPERVISED_DIR}/load_ortha
+s6-svscanctl -a ${SUPERVISED_DIR}
+

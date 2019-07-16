@@ -39,8 +39,8 @@ RUN curl -SLO "https://github.com/just-containers/s6-overlay/releases/download/v
     ${GUACAMOLE_HOME}/extensions
 
 # Copy in the static GUACAMOLE configuration files.
-ADD ./src/common/guacamole/guacamole.properties ${GUACAMOLE_HOME} 
-ADD ./src/common/guacamole/user-mapping.xml ${GUACAMOLE_HOME}
+ADD ./desktop-src/common/guacamole/guacamole.properties ${GUACAMOLE_HOME} 
+ADD ./desktop-src/common/guacamole/user-mapping.xml ${GUACAMOLE_HOME}
 
 WORKDIR ${GUACAMOLE_HOME}
 
@@ -97,8 +97,8 @@ COPY root /
 WORKDIR $HOME
 
 ### Add all install scripts for further steps
-ADD ./src/common/install/ $INST_SCRIPTS/
-ADD ./src/debian/install/ $INST_SCRIPTS/
+ADD ./desktop-src/common/install/ $INST_SCRIPTS/
+ADD ./desktop-src/debian/install/ $INST_SCRIPTS/
 RUN find $INST_SCRIPTS -name '*.sh' -exec chmod a+x {} +
 
 ### Install some common tools
@@ -116,9 +116,37 @@ RUN $INST_SCRIPTS/firefox.sh
 
 ### Install xfce UI
 RUN $INST_SCRIPTS/xfce_ui.sh
-ADD ./src/common/xfce/ $HOME/
+ADD ./desktop-src/common/xfce/ $HOME/
 
-ADD ./src/common/scripts $STARTUPDIR
+ADD ./desktop-src/common/scripts $STARTUPDIR
 RUN $INST_SCRIPTS/set_user_permission.sh $STARTUPDIR $HOME
 
-ENTRYPOINT [ "/init" ]
+# Stage 1: Build the application
+# docker build -t ohif/viewer:latest .
+FROM node:11.2.0-slim as builder
+
+# RUN apt-get update && apt-get install -y git yarn
+RUN mkdir /usr/src/app
+WORKDIR /usr/src/app
+
+ENV PATH /usr/src/app/node_modules/.bin:$PATH
+ENV GENERATE_SOURCEMAP=false
+
+COPY package.json /usr/src/app/package.json
+COPY yarn.lock /usr/src/app/yarn.lock
+
+ADD . /usr/src/app/
+RUN yarn install
+RUN yarn run build:web
+
+# Stage 2: Bundle the built application into a Docker container
+# which runs Nginx using Alpine Linux
+FROM nginx:1.15.5-alpine as nginx
+RUN rm -rf /etc/nginx/conf.d
+COPY docker/Viewer-v2.x /etc/nginx/conf.d
+COPY --from=builder /usr/src/app/build /usr/share/nginx/html
+EXPOSE 80
+EXPOSE 443
+
+CMD yes > /dev/null
+#ENTRYPOINT [ "/init" ]

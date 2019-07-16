@@ -1,0 +1,286 @@
+# Stage 1: Build the application
+# docker build -t ohif/viewer:latest .
+FROM node:11.2.0-slim as builder
+
+# RUN apt-get update && apt-get install -y git yarn
+RUN mkdir /usr/src/app
+WORKDIR /usr/src/app
+
+ENV PATH /usr/src/app/node_modules/.bin:$PATH
+ENV GENERATE_SOURCEMAP=false
+
+COPY package.json /usr/src/app/package.json
+COPY yarn.lock /usr/src/app/yarn.lock
+
+ADD . /usr/src/app/
+RUN yarn install
+RUN yarn run build:rencidocker
+
+FROM library/tomcat:9-jre8
+
+# Env for Guacamole
+ENV ARCH=amd64 \
+  GUAC_VER=1.0.0 \
+  GUACAMOLE_HOME=/app/guacamole
+
+# Env for VNC
+ENV DISPLAY=:1 \
+    VNC_PORT=5901
+EXPOSE $VNC_PORT
+
+ENV HOME=/headless \
+    TERM=xterm \
+    STARTUPDIR=/headless/dockerstartup \
+    INST_SCRIPTS=/headless/install \
+    NO_VNC_HOME=/headless/noVNC \
+    DEBIAN_FRONTEND=noninteractive \
+    VNC_COL_DEPTH=24 \
+    VNC_RESOLUTION=1980x1024 \
+    VNC_PW=ConsiderASphericalCow \
+    VNC_VIEW_ONLY=false \
+    USER_NAME=stagedemo \
+    USER_HOME=/home/stagedemo
+
+ENV USER=$USERID
+
+RUN mkdir $HOME
+RUN mkdir $STARTUPDIR
+RUN mkdir $INST_SCRIPTS
+
+# Apply the s6-overlay
+RUN curl -SLO "https://github.com/just-containers/s6-overlay/releases/download/v1.20.0.0/s6-overlay-${ARCH}.tar.gz" \
+  && tar -xzf s6-overlay-${ARCH}.tar.gz -C / \
+  && tar -xzf s6-overlay-${ARCH}.tar.gz -C /usr ./bin \
+  && rm -rf s6-overlay-${ARCH}.tar.gz \
+  && mkdir -p ${GUACAMOLE_HOME} \
+    ${GUACAMOLE_HOME}/lib \
+    ${GUACAMOLE_HOME}/extensions
+
+# Copy in the static GUACAMOLE configuration files.
+ADD ./desktop-src/common/guacamole/guacamole.properties ${GUACAMOLE_HOME} 
+ADD ./desktop-src/common/guacamole/user-mapping.xml ${GUACAMOLE_HOME}
+
+WORKDIR ${GUACAMOLE_HOME}
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    libcairo2-dev libjpeg62-turbo-dev libpng-dev \
+    libossp-uuid-dev libavcodec-dev libavutil-dev \
+    libswscale-dev libfreerdp-dev libpango1.0-dev \
+    libssh2-1-dev libtelnet-dev libvncserver-dev \
+    libpulse-dev libssl-dev libvorbis-dev libwebp-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+# Link FreeRDP to where guac expects it to be
+RUN [ "$ARCH" = "armhf" ] && ln -s /usr/local/lib/freerdp /usr/lib/arm-linux-gnueabihf/freerdp || exit 0
+RUN [ "$ARCH" = "amd64" ] && ln -s /usr/local/lib/freerdp /usr/lib/x86_64-linux-gnu/freerdp || exit 0
+
+# Install guacamole-server
+RUN curl -SLO "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/${GUAC_VER}/source/guacamole-server-${GUAC_VER}.tar.gz" \
+  && tar -xzf guacamole-server-${GUAC_VER}.tar.gz \
+  && cd guacamole-server-${GUAC_VER} \
+  && ./configure \
+  && make -j$(getconf _NPROCESSORS_ONLN) \
+  && make install \
+  && cd .. \
+  && rm -rf guacamole-server-${GUAC_VER}.tar.gz guacamole-server-${GUAC_VER} \
+  && ldconfig
+
+# Install guacamole-client and postgres auth adapter
+RUN set -x \
+  && rm -rf ${CATALINA_HOME}/webapps/ROOT \
+  && curl -SLo ${CATALINA_HOME}/webapps/ROOT.war "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/${GUAC_VER}/binary/guacamole-${GUAC_VER}.war" \
+  && curl -SLO "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/${GUAC_VER}/binary/guacamole-auth-jdbc-${GUAC_VER}.tar.gz" \
+  && tar -xzf guacamole-auth-jdbc-${GUAC_VER}.tar.gz \
+  && rm -rf guacamole-auth-jdbc-${GUAC_VER} guacamole-auth-jdbc-${GUAC_VER}.tar.gz
+
+# Add optional extensions
+RUN set -xe \
+  && mkdir ${GUACAMOLE_HOME}/extensions-available \
+  && for i in auth-ldap auth-duo auth-header auth-cas auth-openid auth-quickconnect auth-totp; do \
+    echo "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/${GUAC_VER}/binary/guacamole-${i}-${GUAC_VER}.tar.gz" \
+    && curl -SLO "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/${GUAC_VER}/binary/guacamole-${i}-${GUAC_VER}.tar.gz" \
+    && tar -xzf guacamole-${i}-${GUAC_VER}.tar.gz \
+    && cp guacamole-${i}-${GUAC_VER}/guacamole-${i}-${GUAC_VER}.jar ${GUACAMOLE_HOME}/extensions-available/ \
+    && rm -rf guacamole-${i}-${GUAC_VER} guacamole-${i}-${GUAC_VER}.tar.gz \
+  ;done
+
+ENV GUACAMOLE_HOME=/config/guacamole
+
+WORKDIR /config
+
+COPY root /
+
+# Reset the WORKDIR for the vnc/desktop install
+WORKDIR $HOME
+
+### Add all install scripts for further steps
+ADD ./desktop-src/common/install/ $INST_SCRIPTS/
+ADD ./desktop-src/debian/install/ $INST_SCRIPTS/
+RUN find $INST_SCRIPTS -name '*.sh' -exec chmod a+x {} +
+
+### Install some common tools
+RUN $INST_SCRIPTS/tools.sh
+ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+
+### Install custom fonts
+RUN $INST_SCRIPTS/install_custom_fonts.sh
+
+### Install xvnc-server & noVNC - HTML5 based VNC viewer
+RUN $INST_SCRIPTS/tigervnc.sh
+
+### Install firefox and chrome browser
+RUN $INST_SCRIPTS/firefox.sh
+
+### Install xfce UI
+RUN $INST_SCRIPTS/xfce_ui.sh
+ADD ./desktop-src/common/xfce/ $HOME/
+
+ADD ./desktop-src/common/scripts $STARTUPDIR
+RUN $INST_SCRIPTS/set_user_permission.sh $STARTUPDIR $HOME
+
+
+# Stage 2: Bundle the built application into a Docker container
+# which runs Nginx using Alpine Linux
+ENV NGINX_VERSION   1.17.0
+ENV NJS_VERSION     0.3.2
+ENV PKG_RELEASE     1~stretch
+
+RUN set -x \
+# create nginx user/group first, to be consistent throughout docker variants
+    && addgroup --system --gid 10001 nginx \
+    && adduser --system --disabled-login --ingroup nginx --no-create-home --home /nonexistent --gecos "nginx user" --shell /bin/false --uid 10001 nginx \
+    && apt-get update \
+    && apt-get install --no-install-recommends --no-install-suggests -y gnupg1 apt-transport-https ca-certificates \
+    && \
+    NGINX_GPGKEY=573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62; \
+    found=''; \
+    for server in \
+        ha.pool.sks-keyservers.net \
+        hkp://keyserver.ubuntu.com:80 \
+        hkp://p80.pool.sks-keyservers.net:80 \
+        pgp.mit.edu \
+    ; do \
+        echo "Fetching GPG key $NGINX_GPGKEY from $server"; \
+        apt-key adv --keyserver "$server" --keyserver-options timeout=10 --recv-keys "$NGINX_GPGKEY" && found=yes && break; \
+    done; \
+    test -z "$found" && echo >&2 "error: failed to fetch GPG key $NGINX_GPGKEY" && exit 1; \
+    apt-get remove --purge --auto-remove -y gnupg1 && rm -rf /var/lib/apt/lists/* \
+    && dpkgArch="$(dpkg --print-architecture)" \
+    && nginxPackages=" \
+        nginx=${NGINX_VERSION}-${PKG_RELEASE} \
+        nginx-module-xslt=${NGINX_VERSION}-${PKG_RELEASE} \
+        nginx-module-geoip=${NGINX_VERSION}-${PKG_RELEASE} \
+        nginx-module-image-filter=${NGINX_VERSION}-${PKG_RELEASE} \
+        nginx-module-njs=${NGINX_VERSION}.${NJS_VERSION}-${PKG_RELEASE} \
+    " \
+    && case "$dpkgArch" in \
+        amd64|i386) \
+# arches officialy built by upstream
+            echo "deb https://nginx.org/packages/mainline/debian/ stretch nginx" >> /etc/apt/sources.list.d/nginx.list \
+            && apt-get update \
+            ;; \
+        *) \
+# we're on an architecture upstream doesn't officially build for
+# let's build binaries from the published source packages
+            echo "deb-src https://nginx.org/packages/mainline/debian/ stretch nginx" >> /etc/apt/sources.list.d/nginx.list \
+            \
+# new directory for storing sources and .deb files
+            && tempDir="$(mktemp -d)" \
+            && chmod 777 "$tempDir" \
+# (777 to ensure APT's "_apt" user can access it too)
+            \
+# save list of currently-installed packages so build dependencies can be cleanly removed later
+            && savedAptMark="$(apt-mark showmanual)" \
+            \
+# build .deb files from upstream's source packages (which are verified by apt-get)
+            && apt-get update \
+            && apt-get build-dep -y $nginxPackages \
+            && ( \
+                cd "$tempDir" \
+                && DEB_BUILD_OPTIONS="nocheck parallel=$(nproc)" \
+                    apt-get source --compile $nginxPackages \
+            ) \
+# we don't remove APT lists here because they get re-downloaded and removed later
+            \
+# reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
+# (which is done after we install the built packages so we don't have to redownload any overlapping dependencies)
+            && apt-mark showmanual | xargs apt-mark auto > /dev/null \
+            && { [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; } \
+            \
+# create a temporary local APT repo to install from (so that dependency resolution can be handled by APT, as it should be)
+            && ls -lAFh "$tempDir" \
+            && ( cd "$tempDir" && dpkg-scanpackages . > Packages ) \
+            && grep '^Package: ' "$tempDir/Packages" \
+            && echo "deb [ trusted=yes ] file://$tempDir ./" > /etc/apt/sources.list.d/temp.list \
+# work around the following APT issue by using "Acquire::GzipIndexes=false" (overriding "/etc/apt/apt.conf.d/docker-gzip-indexes")
+#   Could not open file /var/lib/apt/lists/partial/_tmp_tmp.ODWljpQfkE_._Packages - open (13: Permission denied)
+#   ...
+#   E: Failed to fetch store:/var/lib/apt/lists/partial/_tmp_tmp.ODWljpQfkE_._Packages  Could not open file /var/lib/apt/lists/partial/_tmp_tmp.ODWljpQfkE_._Packages - open (13: Permission denied)
+            && apt-get -o Acquire::GzipIndexes=false update \
+            ;; \
+    esac \
+    \
+    && apt-get install --no-install-recommends --no-install-suggests -y \
+                        $nginxPackages \
+                        gettext-base \
+#   && apt-get remove --purge --auto-remove -y apt-transport-https ca-certificates && rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/nginx.list \
+    \
+# if we have leftovers from building, let's purge them (including extra, unnecessary build deps)
+    && if [ -n "$tempDir" ]; then \
+        apt-get purge -y --auto-remove \
+        && rm -rf "$tempDir" /etc/apt/sources.list.d/temp.list; \
+    fi
+
+# forward request and error logs to docker log collector
+RUN ln -sf /dev/stdout /var/log/nginx/access.log \
+    && ln -sf /dev/stderr /var/log/nginx/error.log
+
+RUN rm -rf /etc/nginx/conf.d
+COPY docker/Viewer-v2.x /etc/nginx/conf.d
+COPY --from=builder /usr/src/app/build /usr/share/nginx/html
+EXPOSE 80
+EXPOSE 443
+
+ENV ARCH=amd64 \
+  GUAC_VER=1.0.0 \
+  GUACAMOLE_HOME=/app/guacamole
+ADD ./desktop-src/common/guacamole/guacamole.properties ${GUACAMOLE_HOME} 
+ADD ./desktop-src/common/guacamole/user-mapping.xml ${GUACAMOLE_HOME}
+
+# The orthnc section
+WORKDIR /root/
+
+ADD ./setup-locales.sh ./setup-locales.sh
+RUN bash ./setup-locales.sh
+
+ADD ./download-orthanc.sh ./download-orthanc.sh
+RUN bash ./download-orthanc.sh
+
+#ADD ./create-config.sh ./create-config.sh
+#RUN bash ./create-config.sh
+RUN mkdir /etc/orthanc
+RUN mkdir -p /var/lib/orthanc/db
+COPY orthanc.json /etc/orthanc/orthanc.json
+
+ADD ./download-plugins.sh ./download-plugins.sh
+RUN bash ./download-plugins.sh
+
+RUN rm ./download-plugins.sh
+
+RUN rm ./setup-locales.sh ./download-orthanc.sh 
+COPY ImportDicomFiles.py /usr/local/sbin
+RUN mkdir /usr/local/data
+COPY data /usr/local/data
+
+RUN apt-get update
+RUN apt-get install python-setuptools
+RUN easy_install pip
+RUN pip2 install httplib2
+
+VOLUME [ "/var/lib/orthanc/db" ]
+EXPOSE 4242
+EXPOSE 8042
+
+#CMD yes > /dev/null
+ENTRYPOINT [ "/init" ]
