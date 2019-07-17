@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: guacamole-deployment
-        image: heliumdatastage/renci-guacamole-vnc:use-all-defaults
+        image: heliumdatastage/renci-guacamole-vnc:with-ohif-and-ortha
 #       args: ["name", "local-guacamole"]
 #        command: [ "--name=local-guacamole", "/init" ]
         ports:

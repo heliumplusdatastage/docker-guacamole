@@ -9,7 +9,7 @@ spec:
   terminationGracePeriodSeconds: 10
   containers:
   - name: vnc-desktop
-    image: heliumdatastage/renci-guacamole-vnc:use-all-defaults
+    image: heliumdatastage/renci-guacamole-vnc:with-ohif-and-ortha
 #   args: ["name", "local-guacamole"]
 #   command: [ "--name=local-guacamole", "/init" ]
     ports:
@@ -17,7 +17,7 @@ spec:
         name: http
     resources:
       requests:
-        memory: 200Mi
+        memory: 2000Mi
       limits:
-        memory: 1Gi
+        memory: 4Gi
   restartPolicy: OnFailure
