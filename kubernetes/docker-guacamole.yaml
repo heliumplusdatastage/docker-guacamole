@@ -9,9 +9,7 @@ spec:
   terminationGracePeriodSeconds: 10
   containers:
   - name: vnc-desktop
-    image: heliumdatastage/renci-guacamole-vnc:with-ohif-and-ortha
-#   args: ["name", "local-guacamole"]
-#   command: [ "--name=local-guacamole", "/init" ]
+    image: heliumdatastage/renci-guacamole-vnc:with-ohif-and-ortha-latest
     ports:
       - containerPort: 8080
         name: http

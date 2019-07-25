@@ -2,6 +2,9 @@
 # docker build -t ohif/viewer:latest .
 FROM node:11.2.0-slim as builder
 
+ARG BUILD_DATE
+LABEL org.label-schema.build-date=$BUILD_DATE
+
 # RUN apt-get update && apt-get install -y git yarn
 RUN mkdir /usr/src/app
 WORKDIR /usr/src/app

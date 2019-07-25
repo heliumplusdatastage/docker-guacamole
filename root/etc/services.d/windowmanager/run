@@ -6,4 +6,6 @@ until pids=$(pidof Xtigervnc)
 do   
     sleep 1
 done
+HOME=/home/stagedemo
+export HOME
 s6-setuidgid $USER_NAME $HOME/wm_startup.sh > /tmp/wm_startup.log
