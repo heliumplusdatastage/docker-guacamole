@@ -1,0 +1,9 @@
+---
+# Docker compose formatted system.
+version: "3"
+services:
+  docker-guacamole:
+    image: heliumdatastate/renci-guacamole-vnc:with-ohif-and-ortha-latest
+    entrypoint: init
+    ports:
+      - 8080:8080
