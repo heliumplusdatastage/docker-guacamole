@@ -28,6 +28,7 @@ ENV USER=$USERID
 RUN mkdir $HOME
 RUN mkdir $STARTUPDIR
 RUN mkdir $INST_SCRIPTS
+RUN mkdir -p /usr/local/renci/bin
 
 # Apply the s6-overlay
 RUN curl -SLO "https://github.com/just-containers/s6-overlay/releases/download/v1.20.0.0/s6-overlay-${ARCH}.tar.gz" \
