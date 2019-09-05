@@ -1,1 +1,5 @@
-config
+./buildall.log
+Nginx-Orthanc/config/
+OpenResty-Orthanc-Keycloak/config/
+OpenResty-Orthanc/config/
+data
