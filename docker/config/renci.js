@@ -1,6 +1,8 @@
 window.config = {
   // default: '/'
   routerBasename: '/',
+  extensions: [],
+  showStudyList: true,
   // default: ''
   relativeWebWorkerScriptsPath: '',
   servers: {
@@ -10,7 +12,7 @@ window.config = {
         wadoUriRoot: '/orthanc/wado',
         qidoRoot: '/orthanc/dicom-web',
         wadoRoot: '/orthanc/dicom-web',
-        qidoSupportsIncludeField: true,
+        qidoSupportsIncludeField: false,
         imageRendering: 'wadors',
         thumbnailRendering: 'wadors',
         requestOptions: {

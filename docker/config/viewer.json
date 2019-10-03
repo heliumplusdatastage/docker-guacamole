@@ -29,7 +29,7 @@
 		  "defaultServiceType": "dicomWeb",
 		  "public": {
 				"ui": {
-					"studyListDateFilterNumDays": 7000
+					"studyListDateFilterNumDays": 50000
 				}
 			},
 		  "proxy": {

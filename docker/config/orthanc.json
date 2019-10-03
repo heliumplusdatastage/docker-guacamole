@@ -1,20 +1,16 @@
-{
-  /**
-   * General configuration of Orthanc
-   **/
-
-  // The logical name of this instance of Orthanc. This one is
+{ /** * General configuration of Orthanc **/ // The logical name of this instance of Orthanc. This one is
   // displayed in Orthanc Explorer and at the URI "/system".
   "Name" : "Orthanc inside Docker",
-//  "PostgreSQL" : {
-//    "EnableIndex" : true,
-//    "EnableStorage" : true,
-//    "Host" : "postgres",
-//    "Port" : 5432,
-//    "Database" : "orthanc",
-//    "Username" : "postgres",
-//    "Password" : "pgpassword"
-//  },
+  "PostgreSQL" : {
+    "EnableIndex" : true,
+    "EnableStorage" : true,
+    "Host" : "postgres",
+    "Port" : 5432,
+    "Database" : "orthanc",
+    "Username" : "postgres",
+    "Password" : "postgres-orthanc",
+    "EnableSsl" : false
+  },
 
   // Path to the directory that holds the heavyweight files (i.e. the
   // raw DICOM instances). Backslashes must be either escaped by
@@ -493,7 +489,7 @@
   // is specified). This option should be set to "false" if multiple
   // Orthanc servers are using the same database (e.g. if PostgreSQL
   // or MariaDB/MySQL is used).
-  "SaveJobs" : true,
+  "SaveJobs" : false,
 
   // Specifies how Orthanc reacts when it receives a DICOM instance
   // whose SOPInstanceUID is already stored. If set to "true", the new
@@ -519,7 +515,7 @@
   // answers, but not to filter the DICOM resources (balance between
   // the two modes). By default, the mode is "Always", which
   // corresponds to the behavior of Orthanc <= 1.5.0.
-  "StorageAccessOnFind" : "Always",
+  "StorageAccessOnFind" : "Never",
 
   // Whether Orthanc monitors its metrics (new in Orthanc 1.5.4). If
   // set to "true", the metrics can be retrieved at

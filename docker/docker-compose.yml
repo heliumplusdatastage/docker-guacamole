@@ -11,15 +11,47 @@ services:
          - 8080:8080
 
    viewer:
-      image: ohif/viewer:latest
+#     image: ohif/viewer:latest
+      image: ohif/viewer:v1.1.14.3708
       container_name: viewer
       volumes:
 #         - ${VIEWER_CONFIG:-./config/viewer.json}:/app/app.json:ro
-         - ${VIEWER_CONFIG:-./config/renci.js}:/usr/share/nginx/html/config/default.js
+         - ${VIEWER_CONFIG:-./config/renci.js}:/usr/share/nginx/html/app-config.js
          - ${NGINX_CONFIG:-./config/nginx-with-proxy.conf}:/etc/nginx/conf.d/default.conf
+      environment:
+         - MONGO_URL=mongodb://mongo:27017/ohif
+         - APP_CONFIG=/usr/share/nginx/html/app-config.js
+      depends_on:
+         - mongo
+         - orthanc
+      ports:
+         - "3000:80"
 
    orthanc:
       image: jodogne/orthanc-plugins:latest
+#     image: jodogne/orthanc-plugins:1.5.6
       container_name: orthanc
+      depends_on:
+         - postgres
       volumes:
          - ${ORTHANC_CONFIG:-./config/orthanc.json}:/etc/orthanc/orthanc.json:ro
+#        - ${ORTHANC_DB:-/orthadb/orthanc/db}:/var/lib/orthanc/db
+
+   mongo:
+      image: mongo:latest
+      container_name: mongo
+      ports:
+         - "27017:27017"
+      volumes:
+        - ${MONGO_DATA:-./mongo_data}:/data/db
+
+   postgres:
+      image: postgres:11
+      container_name: postgres
+      volumes:
+        - ${POSTGRES_DATA_MNT:-/orthadb/postgresql/data/pgdata}:${PGDATA:-/var/lib/postgresql/data}
+      environment:
+        - POSTGRES_USER=${POSTGRES_USER:-postgres}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres-orthanc}
+        - PGDATA=${PGDATA:-/var/lib/postgresql/data}
+        - POSTGRES_DB=orthanc

@@ -18,6 +18,14 @@ window.config = {
       },
     ],
   },
+
+"public": {
+    "verifyEmail": false,
+    "ui": {
+        "studyListFunctionsEnabled": true,
+        "studyListDateFilterNumDays": 50000
+    }
+  },
   // Extensions should be able to suggest default values for these?
   // Or we can require that these be explicitly set
   hotkeys: [
