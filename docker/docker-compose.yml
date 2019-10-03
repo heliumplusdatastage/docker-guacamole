@@ -36,6 +36,9 @@ services:
       volumes:
          - ${ORTHANC_CONFIG:-./config/orthanc.json}:/etc/orthanc/orthanc.json:ro
 #        - ${ORTHANC_DB:-/orthadb/orthanc/db}:/var/lib/orthanc/db
+      ports:
+         - "8042:8042"
+         - "4242:4242"
 
    mongo:
       image: mongo:latest
@@ -55,3 +58,6 @@ services:
         - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres-orthanc}
         - PGDATA=${PGDATA:-/var/lib/postgresql/data}
         - POSTGRES_DB=orthanc
+      ports:
+         - "5432:5432"
+     
