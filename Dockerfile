@@ -122,4 +122,16 @@ ADD ./src/common/xfce/ $HOME/
 ADD ./src/common/scripts $STARTUPDIR
 RUN $INST_SCRIPTS/set_user_permission.sh $STARTUPDIR $HOME
 
+### Make the /usr/local/bin/renci directory
+RUN mkdir -p /usr/local/renci/bin
+
+### lets get the executables we need
+### Start with ImageJ
+RUN set -x \
+  && cd /usr/local/renci/bin \
+  && curl -SLo ij152-linux64-java8.zip http://wsr.imagej.net/distros/linux/ij152-linux64-java8.zip \
+  && unzip ij152-linux64-java8.zip \
+  && rm -f ij152-linux64-java8.zip 
+
+
 ENTRYPOINT [ "/init" ]
