@@ -135,6 +135,7 @@ RUN set -x \
   && rm -f ij152-linux64-java8.zip \
   && alias imagej="/usr/bin/java -Xmx512m -cp /usr/local/renci/bin/ImageJ/ij.jar ij.ImageJ"
 
+FROM python:3.7
 ### Add Napari
 RUN pip install napari
   
