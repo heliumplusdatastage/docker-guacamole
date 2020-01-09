@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y \
     libswscale-dev libfreerdp-dev libpango1.0-dev \
     libssh2-1-dev libtelnet-dev libvncserver-dev \
     libpulse-dev libssl-dev libvorbis-dev libwebp-dev \
+    pip3 python3 \
   && rm -rf /var/lib/apt/lists/*
 
 # Link FreeRDP to where guac expects it to be
@@ -131,7 +132,11 @@ RUN set -x \
   && cd /usr/local/renci/bin \
   && curl -SLo ij152-linux64-java8.zip http://wsr.imagej.net/distros/linux/ij152-linux64-java8.zip \
   && unzip ij152-linux64-java8.zip \
-  && rm -f ij152-linux64-java8.zip 
+  && rm -f ij152-linux64-java8.zip \
+  && alias imagej=/usr/bin/java -Xmx512m -cp /usr/local/renci/bin/ImageJ/ij.jar ij.ImageJ
 
-
+### Add Napari
+RUN pip install napari
+  
+  
 ENTRYPOINT [ "/init" ]
