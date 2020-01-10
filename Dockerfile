@@ -1,13 +1,77 @@
-FROM library/tomcat:9-jre8
+# Stage 1: Build the application
+# docker build -t ohif/viewer:latest .
+# FROM node:11.2.0-slim as builder
+FROM node:10.16.3-slim as builder
+
+# Get the needed files from github with wget
+ENV DOWNLOAD_DIR="/tmp/downloaded-src"
+ENV OHIF_SOURCE_DIR="/tmp/downloaded-src/Viewers"
+WORKDIR $DOWNLOAD_DIR
+
+ENV GIT_URL="https://github.com/OHIF/Viewers.git"
+
+RUN apt-get update && apt-get install -y \
+  git
+
+RUN git clone $GIT_URL
+
+RUN mkdir /usr/src/app
+WORKDIR /usr/src/app
+
+# Copy Files
+RUN cp -r $OHIF_SOURCE_DIR/.docker /usr/src/app/.docker
+RUN cp -r $OHIF_SOURCE_DIR/.webpack /usr/src/app/.webpack
+RUN cp -r $OHIF_SOURCE_DIR/extensions /usr/src/app/extensions
+RUN cp -r $OHIF_SOURCE_DIR/platform /usr/src/app/platform
+RUN cp $OHIF_SOURCE_DIR/.browserslistrc /usr/src/app/.browserslistrc
+RUN cp $OHIF_SOURCE_DIR/aliases.config.js /usr/src/app/aliases.config.js
+RUN cp $OHIF_SOURCE_DIR/babel.config.js /usr/src/app/babel.config.js
+RUN cp $OHIF_SOURCE_DIR/lerna.json /usr/src/app/lerna.json
+RUN cp $OHIF_SOURCE_DIR/package.json /usr/src/app/package.json
+RUN cp $OHIF_SOURCE_DIR/postcss.config.js /usr/src/app/postcss.config.js
+RUN cp $OHIF_SOURCE_DIR/yarn.lock /usr/src/app/yarn.lock
+
+# Run the install before copying the rest of the files
+RUN yarn config set workspaces-experimental true
+RUN yarn install
+#
+ENV PATH /usr/src/app/node_modules/.bin:$PATH
+ENV QUICK_BUILD true
+# ENV GENERATE_SOURCEMAP=false
+# ENV REACT_APP_CONFIG=config/default.js
+
+RUN yarn run build
+
+FROM library/tomcat:9-jre8 as tomcat
+ENV OHIF_SOURCE_DIR="/tmp/downloaded-src/Viewers"
+## install nginx and copy in the OHIF code
+RUN apt-get update && apt-get install -y \
+	nginx
+RUN rm -rf /etc/nginx/conf.d
+COPY --from=builder $OHIF_SOURCE_DIR/.docker/Viewer-v2.x/default.conf /etc/nginx/conf.d/default.conf
+RUN printf '\
+\n\
+server {\n\
+  listen 3000;\n\
+  location / {\n\
+    root   /usr/share/nginx/html;\n\
+    index  index.html index.htm;\n\
+    try_files $uri $uri/ /index.html;\n\
+  }\n\
+  error_page   500 502 503 504  /50x.html;\n\
+  location = /50x.html {\n\
+    root   /usr/share/nginx/html;\n\
+  }\n\
+}' >> /etc/nginx/conf.d/default.conf
+COPY --from=builder $OHIF_SOURCE_DIR/.docker/Viewer-v2.x/entrypoint.sh /usr/src/
+RUN chmod 777 /usr/src/entrypoint.sh
+COPY --from=builder /usr/src/app/platform/viewer/dist /usr/share/nginx/html
+
 
 # Env for Guacamole
 ENV ARCH=amd64 \
   GUAC_VER=1.0.0 \
-  GUACAMOLE_HOME=/app/guacamole \
-  PG_MAJOR=9.6 \
-  PGDATA=/config/postgres \
-  POSTGRES_USER=guacamole \
-  POSTGRES_DB=guacamole_db
+  GUACAMOLE_HOME=/app/guacamole
 
 # Env for VNC
 ENV DISPLAY=:1 \
@@ -21,16 +85,18 @@ ENV HOME=/headless \
     NO_VNC_HOME=/headless/noVNC \
     DEBIAN_FRONTEND=noninteractive \
     VNC_COL_DEPTH=24 \
-    VNC_RESOLUTION=1280x1024 \
-    VNC_PW=vncpassword \
+    VNC_RESOLUTION=1980x1024 \
+    VNC_PW=ConsiderASphericalCow \
     VNC_VIEW_ONLY=false \
-    USER_NAME=default
+    USER_NAME=stagedemo \
+    USER_HOME=/home/stagedemo
 
 ENV USER=$USERID
 
 RUN mkdir $HOME
 RUN mkdir $STARTUPDIR
 RUN mkdir $INST_SCRIPTS
+RUN mkdir -p /usr/local/renci/bin
 
 # Apply the s6-overlay
 RUN curl -SLO "https://github.com/just-containers/s6-overlay/releases/download/v1.20.0.0/s6-overlay-${ARCH}.tar.gz" \
@@ -41,6 +107,10 @@ RUN curl -SLO "https://github.com/just-containers/s6-overlay/releases/download/v
     ${GUACAMOLE_HOME}/lib \
     ${GUACAMOLE_HOME}/extensions
 
+# Copy in the static GUACAMOLE configuration files.
+ADD ./src/common/guacamole/guacamole.properties ${GUACAMOLE_HOME} 
+ADD ./src/common/guacamole/user-mapping.xml ${GUACAMOLE_HOME}
+
 WORKDIR ${GUACAMOLE_HOME}
 
 # Install dependencies
@@ -50,7 +120,6 @@ RUN apt-get update && apt-get install -y \
     libswscale-dev libfreerdp-dev libpango1.0-dev \
     libssh2-1-dev libtelnet-dev libvncserver-dev \
     libpulse-dev libssl-dev libvorbis-dev libwebp-dev \
-    ghostscript postgresql-${PG_MAJOR} \
   && rm -rf /var/lib/apt/lists/*
 
 # Link FreeRDP to where guac expects it to be
@@ -72,11 +141,8 @@ RUN curl -SLO "http://apache.org/dyn/closer.cgi?action=download&filename=guacamo
 RUN set -x \
   && rm -rf ${CATALINA_HOME}/webapps/ROOT \
   && curl -SLo ${CATALINA_HOME}/webapps/ROOT.war "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/${GUAC_VER}/binary/guacamole-${GUAC_VER}.war" \
-  && curl -SLo ${GUACAMOLE_HOME}/lib/postgresql-42.1.4.jar "https://jdbc.postgresql.org/download/postgresql-42.1.4.jar" \
   && curl -SLO "http://apache.org/dyn/closer.cgi?action=download&filename=guacamole/${GUAC_VER}/binary/guacamole-auth-jdbc-${GUAC_VER}.tar.gz" \
   && tar -xzf guacamole-auth-jdbc-${GUAC_VER}.tar.gz \
-  && cp -R guacamole-auth-jdbc-${GUAC_VER}/postgresql/guacamole-auth-jdbc-postgresql-${GUAC_VER}.jar ${GUACAMOLE_HOME}/extensions/ \
-  && cp -R guacamole-auth-jdbc-${GUAC_VER}/postgresql/schema ${GUACAMOLE_HOME}/ \
   && rm -rf guacamole-auth-jdbc-${GUAC_VER} guacamole-auth-jdbc-${GUAC_VER}.tar.gz
 
 # Add optional extensions
@@ -90,7 +156,6 @@ RUN set -xe \
     && rm -rf guacamole-${i}-${GUAC_VER} guacamole-${i}-${GUAC_VER}.tar.gz \
   ;done
 
-ENV PATH=/usr/lib/postgresql/${PG_MAJOR}/bin:$PATH
 ENV GUACAMOLE_HOME=/config/guacamole
 
 WORKDIR /config
@@ -124,5 +189,11 @@ ADD ./src/common/xfce/ $HOME/
 
 ADD ./src/common/scripts $STARTUPDIR
 RUN $INST_SCRIPTS/set_user_permission.sh $STARTUPDIR $HOME
+
+### Make the /usr/local/bin/renci directory
+RUN mkdir -p /usr/local/renci/bin
+
+EXPOSE 80
+EXPOSE 443
 
 ENTRYPOINT [ "/init" ]

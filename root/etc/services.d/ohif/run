@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv sh
+
+echo "Running the entry point script"
+/usr/src/entrypoint.sh
+
+echo "Starting nginx..."
+s6-setuidgid root nginx -g 'daemon off;'
