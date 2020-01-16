@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Name=ImageJ Image Viewer
+StartupNotify=true
+Exec=/usr/bin/java -Xmx512m -cp /usr/local/renci/bin/ImageJ/ij.jar ij.ImageJ
+Icon=/usr/local/renci/bin/ImageJ/images/icon.png
+Terminal=false
+Type=Application

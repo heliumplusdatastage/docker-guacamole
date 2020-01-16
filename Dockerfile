@@ -52,7 +52,6 @@ RUN apt-get update && apt-get install -y \
     libswscale-dev libfreerdp-dev libpango1.0-dev \
     libssh2-1-dev libtelnet-dev libvncserver-dev \
     libpulse-dev libssl-dev libvorbis-dev libwebp-dev \
-    pip3 python3 \
   && rm -rf /var/lib/apt/lists/*
 
 # Link FreeRDP to where guac expects it to be
@@ -127,7 +126,6 @@ RUN $INST_SCRIPTS/set_user_permission.sh $STARTUPDIR $HOME
 RUN mkdir -p /usr/local/renci/bin
 
 ### lets get the executables we need
-### Start with ImageJ
 RUN set -x \
   && cd /usr/local/renci/bin \
   && curl -SLo ij152-linux64-java8.zip http://wsr.imagej.net/distros/linux/ij152-linux64-java8.zip \
@@ -135,9 +133,30 @@ RUN set -x \
   && rm -f ij152-linux64-java8.zip \
   && alias imagej="/usr/bin/java -Xmx512m -cp /usr/local/renci/bin/ImageJ/ij.jar ij.ImageJ"
 
-FROM python:3.7
 ### Add Napari
-RUN pip install napari
-  
-  
+RUN set -x \
+   && apt update \
+   && apt install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget libbz2-dev libxcb1 libqt5gui5\
+   && pwd \
+   && curl -O https://www.python.org/ftp/python/3.7.3/Python-3.7.3.tar.xz \
+   && tar -xf Python-3.7.3.tar.xz \
+   && pwd \
+   && cd Python-3.7.3 \
+   && pwd \
+   && ls -l ./configure \
+   && ./configure \
+   && make -j 4 \
+   && make install \
+   && python3 --version \
+   && apt install -y python3-pip \
+   && pip3 --version
+
+RUN set -x \
+   && apt install -y git \
+   && cd /usr/local/renci \
+   && git clone https://github.com/napari/napari.git \
+   && cd napari \
+   && pwd \
+   && pip3 install -e .
+
 ENTRYPOINT [ "/init" ]
