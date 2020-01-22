@@ -40,8 +40,8 @@ RUN curl -SLO "https://github.com/just-containers/s6-overlay/releases/download/v
     ${GUACAMOLE_HOME}/extensions
 
 # Copy in the static GUACAMOLE configuration files.
-ADD ./src/common/guacamole/guacamole.properties ${GUACAMOLE_HOME} 
-ADD ./src/common/guacamole/user-mapping.xml ${GUACAMOLE_HOME}
+ADD ./src/common/guacamole/guacamole.properties ${GUACAMOLE_HOME}
+ADD ./src/common/guacamole/user-mapping-template.xml ${GUACAMOLE_HOME}
 
 WORKDIR ${GUACAMOLE_HOME}
 
