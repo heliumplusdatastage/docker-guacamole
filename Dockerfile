@@ -18,10 +18,10 @@ ENV HOME=/headless \
     DEBIAN_FRONTEND=noninteractive \
     VNC_COL_DEPTH=24 \
     VNC_RESOLUTION=1980x1024 \
-    VNC_PW=ConsiderASphericalCow \
+    VNC_PW="" \
     VNC_VIEW_ONLY=false \
-    USER_NAME=stagedemo \
-    USER_HOME=/home/stagedemo
+    USER_NAME="" \
+    USER_HOME=""
 
 ENV USER=$USERID
 
