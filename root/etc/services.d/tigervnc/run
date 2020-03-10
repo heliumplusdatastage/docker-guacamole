@@ -1,6 +1,6 @@
 #!/usr/bin/with-contenv sh
 echo "Starting tigervnc for user $USER_NAME with home = ~${USER_NAME} on DISPLAY $DISPLAY ..."
 echo "Starting tigervnc with depth $VNC_COL_DEPTH and geometry $VNC_RESOLUTION ..."
-HOME=/home/stagedemo
+HOME=$USER_HOME
 export HOME
 s6-setuidgid $USER_NAME vncserver -fg $DISPLAY -depth $VNC_COL_DEPTH -geometry $VNC_RESOLUTION > /tmp/no_vnc_startup.log

@@ -5,10 +5,10 @@
          documentation: http://guac-dev.org/Configuring%20Guacamole -->
 
     <!-- Per-user authentication and config information -->
-    <authorize username="stagedemo" password="ConsiderASphericalCow">
+    <authorize username="${USER_NAME}" password="${VNC_PW}">
         <protocol>vnc</protocol>
         <param name="hostname">localhost</param>
         <param name="port">5901</param>
-        <param name="password">ConsiderASphericalCow</param>
+        <param name="password">${VNC_PW}</param>
     </authorize>
 </user-mapping>

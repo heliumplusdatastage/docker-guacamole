@@ -86,10 +86,10 @@ ENV HOME=/headless \
     DEBIAN_FRONTEND=noninteractive \
     VNC_COL_DEPTH=24 \
     VNC_RESOLUTION=1980x1024 \
-    VNC_PW=ConsiderASphericalCow \
+    VNC_PW="" \
     VNC_VIEW_ONLY=false \
-    USER_NAME=stagedemo \
-    USER_HOME=/home/stagedemo
+    USER_NAME="" \
+    USER_HOME=""
 
 ENV USER=$USERID
 
@@ -109,7 +109,7 @@ RUN curl -SLO "https://github.com/just-containers/s6-overlay/releases/download/v
 
 # Copy in the static GUACAMOLE configuration files.
 ADD ./src/common/guacamole/guacamole.properties ${GUACAMOLE_HOME} 
-ADD ./src/common/guacamole/user-mapping.xml ${GUACAMOLE_HOME}
+ADD ./src/common/guacamole/user-mapping-template.xml ${GUACAMOLE_HOME}
 
 WORKDIR ${GUACAMOLE_HOME}
 
